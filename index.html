@@ -1,0 +1,760 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>z4s - Zeta 4 Search</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;700&display=swap');
+
+        :root {
+            --primary-color: white;
+            --background-color: #121212;
+            --text-color: white;
+            --secondary-background: rgba(44, 44, 44, 0.8);
+            --card-background: rgba(255, 255, 255, 0.1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none; /* This line disables text selection */
+        }
+
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: var(--background-color);
+            color: var(--text-color);
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+            overflow-x: hidden;
+            position: relative;
+            transition: background-color 5s ease, color 5s ease;
+        }
+
+        #matrix-background, #particle-background {
+            position: fixed;
+            color: white;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+        }
+
+        #matrix-background {
+            opacity: 0.2;
+            color: white;
+            background-color: white;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            flex-grow: 1;
+            position: relative;
+            z-index: 1;
+        }
+
+        .logo {
+            font-size: 4rem;
+            font-weight: 700;
+            margin-bottom: 2rem;
+            color: var(--primary-color);
+            text-shadow: 0 0 10px white;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+
+        .search-form {
+            width: 100%;
+            display: flex;
+            margin-bottom: 2rem;
+        }
+
+        .search-input {
+            flex-grow: 1;
+            padding: 1rem;
+            font-size: 1.2rem;
+            border: none;
+            border-radius: 30px 0 0 30px;
+            background-color: var(--secondary-background);
+            color: var(--text-color);
+            transition: all 0.3s ease;
+        }
+
+        .search-input:focus {
+            outline: none;
+            box-shadow: 0 0 0 2px var(--primary-color);
+        }
+
+        .search-button {
+            padding: 1rem 2rem;
+            font-size: 1.2rem;
+            border: none;
+            background-color: var(--primary-color);
+            color: var(black);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .search-button {
+            border-radius: 0 30px 30px 0;
+        }
+
+        .search-button:hover {
+            background-color: #ffffff;
+            transform: translateY(-2px);
+        }
+
+        .random-fact, .trending-searches {
+            text-align: center;
+            margin-top: 2rem;
+            padding: 1rem;
+            background-color: var(--card-background);
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+            width: 100%;
+        }
+
+        .random-fact:hover, .trending-searches:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 6px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        .fact-icon, .trending-icon {
+            font-size: 2rem;
+            margin-bottom: 1rem;
+            color: var(--primary-color);
+        }
+
+        .trending-list {
+            list-style-type: none;
+            padding: 0;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 1rem;
+        }
+
+        .trending-item {
+            background-color: var(--secondary-background);
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .trending-item:hover {
+            background-color: var(--primary-color);
+            color: #ffffff;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 1rem;
+            }
+
+            .logo {
+                font-size: 3rem;
+            }
+
+            .search-form {
+                flex-direction: column;
+            }
+
+            .search-input, .search-button {
+                border-radius: 30px;
+                margin-bottom: 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <canvas id="matrix-background"></canvas>
+    <canvas id="particle-background"></canvas>
+    <div class="container">
+        <h1 class="logo">z4s</h1>
+        <form class="search-form" id="search-form">
+            <input type="text" class="search-input" id="search-input" placeholder="Search the web..." autocomplete="off">
+            <button type="submit" class="search-button">
+                <i class="fas fa-search"></i>
+            </button>
+        </form>
+        <div class="random-fact">
+            <i class="fas fa-lightbulb fact-icon"></i>
+            <p>----------------------------------------------------------------------------------------------------------------------------------------------------------------</p>
+            <p id="fact-text">Loading a random fact...</p>
+        </div>
+    </div>
+
+    <script>
+        const searchForm = document.getElementById('search-form');
+        const searchInput = document.getElementById('search-input');
+        const factText = document.getElementById('fact-text');
+
+        // Random search queries
+        const searchQueries = [
+            "How tall is the Eiffel Tower?",
+            "Top 10 programming languages in 2024",
+            "Weather forecast in New York",
+            "Best movies of the decade",
+            "How to learn Python?",
+            "History of the Roman Empire",
+            "Latest tech gadgets",
+            "Recipes for a healthy breakfast",
+            "How to meditate for beginners",
+            "Interesting facts about space",
+            "What is the meaning of life?",
+            "How to build a website",
+            "Top 10 books to read in 2024",
+            "How to learn Spanish",
+            "What is the difference between AI and ML?",
+            "How to start a business",
+            "What is the most popular social media platform?",
+            "How to create a mobile app",
+            "What is the best way to learn programming?",
+            "How to make a video game",
+            "What is the latest fashion trend?",
+            "How to become a data scientist",
+            "What is the most popular programming language?",
+            "How to build a machine learning model",
+            "What is the best way to learn data science?",
+            "How to start a podcast",
+            "What is the most popular book genre?",
+            "How to create a YouTube channel",
+            "What is the latest news on climate change?",
+            "How to become a software engineer",
+            "What is the best way to learn web development?",
+            "How to make a mobile game",
+            "What is the most popular game genre?",
+            "How to start a non-profit organization",
+            "What is the latest trend in education?",
+            "How to create a non-profit website",
+            "What is the best way to learn about history?",
+            "How to become a historian",
+            "What is the most popular museum in the world?",
+            "How to start a museum",
+            "What is the latest discovery in space exploration?",
+            "How to become an astronaut",
+            "What is the best way to learn about science?",
+            "How to create a science experiment",
+            "What is the most popular science topic?",
+            "How to start a science fair",
+            "What is the latest breakthrough in medicine?",
+            "How to become a doctor",
+            "What is the best way to learn about health?",
+            "How to create a healthy meal plan",
+            "What is the most popular type of music?",
+            "How to start a music career",
+            "What is the latest trend in fashion?",
+            "How to become a fashion designer",
+            "What is the best way to learn about art?",
+            "How to create a painting",
+            "What is the most popular type of art?",
+            "How to start an art studio",
+            "What is the latest discovery in archaeology?",
+            "How to become an archaeologist",
+            "What is the best way to learn about ancient civilizations?",
+            "How to create a historical simulation",
+            "What is the most popular type of video game?",
+            "How to start a gaming career",
+            "What is the latest trend in sports?",
+            "How to become a professional athlete",
+            "What is the best way to learn about sports?",
+            "How to create a sports team",
+            "What is the most popular type of cuisine?",
+            "How to start a restaurant",
+            "What is the latest trend in travel?",
+            "How to become a travel influencer",
+            "What is the best way to learn about geography?",
+            "How to create a travel itinerary",
+            "What is the most popular type of holiday?",
+            "How to start a holiday business",
+            "What is the latest trend in technology?",
+            "How to become a software developer",
+            "What is the best way to learn about coding?",
+            "How to create a coding tutorial",
+            "What is the most popular type of programming language?",
+            "How to start a tech business",
+            "What is the latest breakthrough in renewable energy?",
+            "How to become a sustainability expert",
+            "What is the best way to learn about environmental science?",
+            "How to create a sustainable lifestyle",
+            "What is the most popular type of green technology?",
+            "How to start a green business",
+            "What is the latest trend in finance?",
+            "How to become a financial analyst",
+            "What is the best way to learn about economics?",
+            "How to create a budget plan",
+            "What is the most popular type of investment?",
+            "How to start a financial business",
+            "What is the latest trend in marketing?",
+            "How to become a marketing manager",
+            "What is the best way to learn about advertising?",
+            "How to create a marketing campaign",
+            "What is the most popular type of social media platform?",
+            "How to start a social media business",
+            "What is the latest trend in human resources?",
+            "How to become an HR manager",
+            "What is the best way to learn about organizational behavior?",
+            "How to create a company culture",
+            "What is the most popular type of leadership style?",
+            "How to start a leadership development program",
+            "What is the latest trend in entrepreneurship?",
+            "How to become a successful entrepreneur",
+            "What is the best way to learn about business management?",
+            "How to create a business plan",
+            "What is the most popular type of small business?",
+            "How to start a small business",
+            "What is the latest trend in e-commerce?",
+            "How to become an e-commerce expert",
+            "What is the best way to learn about digital marketing?",
+            "How to create an e-commerce website",
+            "What is the most popular type of online course?",
+            "How to start an online education business",
+            "What is the latest trend in cybersecurity?",
+            "How to become a cybersecurity expert",
+            "What is the best way to learn about data protection?",
+            "How to create a security plan",
+            "What is the most popular type of IT service?",
+            "How to start an IT business",
+            "What is the latest trend in logistics and supply chain management?",
+            "How to become a logistics manager",
+            "What is the best way to learn about transportation management?",
+            "How to create a logistics plan",
+            "What is the most popular type of manufacturing process?",
+            "How to start a manufacturing business",
+            "What is the latest trend in construction management?",
+            "How to become a construction manager",
+            "What is the best way to learn about architecture?",
+            "How to create a building design",
+            "What is the most popular type of engineering field?",
+            "How to start an engineering career",
+            "What is the latest trend in telecommunications?",
+            "How to become a telecommunications expert",
+            "What is the best way to learn about network management?",
+            "How to create a telecommunications plan",
+            "What is the most popular type of energy source?",
+            "How to start a renewable energy business",
+            "What is the latest trend in environmental conservation?",
+            "How to become an environmental scientist",
+            "What is the best way to learn about wildlife conservation?",
+            "How to create an environmental plan",
+            "What is the most popular type of outdoor recreation?",
+            "How to start an outdoor recreation business",
+            "What is the latest trend in agriculture and farming?",
+            "How to become a farmer",
+            "What is the best way to learn about agricultural science?",
+            "How to create a farming plan",
+            "What is the most popular type of food and beverage business?",
+            "How to start a food and beverage business",
+            "What is the latest trend in hospitality and tourism?",
+            "How to become a hotel manager",
+            "What is the best way to learn about destination marketing?",
+            "How to create a tour package",
+            "What is the most popular type of event planning?",
+            "How to start an event planning business",
+            "What is the latest trend in medical tourism?",
+            "How to become a medical tour operator",
+            "What is the best way to learn about medical tourism?",
+            "How to create a medical tour package",
+            "What is the most popular type of wellness and spa business?",
+            "How to start a wellness and spa business",
+            "What is the latest trend in social entrepreneurship?",
+            "How to become a social entrepreneur",
+            "What is the best way to learn about social innovation?",
+            "How to create a social impact plan",
+            "What is the most popular type of non-profit organization?",
+            "How to start a non-profit organization",
+            "What is the latest trend in community development?",
+            "How to become a community developer",
+            "What is the best way to learn about urban planning?",
+            "How to create a community development plan",
+            "What is the most popular type of disaster response and recovery?",
+            "How to start a disaster response and recovery business",
+            "What is the difference between AI and ML?",
+            "How to build a chatbot using natural language processing",
+            "What is the future of artificial intelligence?",
+            "How to implement deep learning in computer vision",
+            "What are the applications of reinforcement learning?",
+            "How to build a recommendation system using collaborative filtering",
+            "What is the role of AI in cybersecurity?",
+            "How to use transfer learning in deep learning models",
+            "What are the challenges of natural language processing?",
+            "How to build a sentiment analysis model using machine learning",
+            "What is the impact of AI on the job market?",
+            "How to use AI for predictive maintenance",
+            "What are the benefits of using AI in healthcare?",
+            "How to build a facial recognition system using deep learning",
+            "What is the difference between supervised and unsupervised learning?",
+            "How to use clustering algorithms in machine learning",
+            "What are the applications of computer vision in AI?",
+            "How to build a speech recognition system using deep learning",
+            "What are the challenges of autonomous vehicles?",
+            "How to use AI for time series forecasting",
+            "What are the benefits of using AI in finance?",
+            "How to build a decision tree model using machine learning",
+            "What is the role of AI in customer service?",
+            "How to use ensemble learning in machine learning models",
+            "What are the applications of AI in education?",
+            "How to build a natural language generation model using deep learning",
+            "What are the challenges of explainable AI?",
+            "How to use AI for anomaly detection",
+            "What are the benefits of using AI in marketing?",
+            "How to build a segmentation model using clustering algorithms",
+            "What is the difference between regression and classification?",
+            "How to use dimensionality reduction in machine learning",
+            "What are the applications of AI in energy and utilities?",
+            "How to build a predictive maintenance model using machine learning",
+            "What are the challenges of edge AI?",
+            "How to use AI for quality control in manufacturing",
+            "What are the benefits of using AI in supply chain management?",
+            "How to build a demand forecasting model using machine learning",
+            "What is the role of AI in human resources?",
+            "How to use AI for candidate sourcing and screening",
+            "What are the challenges of AI in talent management?",
+            "How to use AI for employee engagement and retention",
+            "What are the benefits of using AI in talent acquisition?",
+            "How to build a talent pipeline using AI",
+            "What is the difference between AI and automation?",
+            "How to use AI for workflow automation",
+            "What are the challenges of AI adoption in the workforce?",
+            "How to use AI for digital transformation",
+            "What are the benefits of using AI in business process optimization",
+            "How to build a business intelligence dashboard using AI",
+            "What is the role of AI in corporate strategy?",
+            "How to use AI for market research and analysis",
+            "What are the challenges of AI in competitive intelligence?",
+            "How to use AI for competitive analysis and benchmarking",
+            "What are the benefits of using AI in business development?",
+            "How to build a sales forecasting model using machine learning",
+            "What is the difference between AI and cognitive computing?",
+            "How to use AI for cognitive enhancement",
+            "What are the challenges of AI in brain-computer interfaces?",
+            "How to use AI for neuroscientific research",
+            "What are the benefits of using AI in neuroscience?",
+            "How to build a neural network model using deep learning",
+            "What is the role of AI in robotics?",
+            "How to use AI for robotics process automation",
+            "What are the challenges of AI in robotic arms?",
+            "How to use AI for robotic grippers",
+            "What are the benefits of using AI in computer vision?",
+            "How to build a computer vision model using deep learning",
+            "What is the difference between AI and computer vision?",
+            "How to use AI for image recognition",
+            "What are the challenges of AI in object detection?",
+            "How to use AI for object tracking",
+            "What are the benefits of using AI in image segmentation?",
+            "How to build a natural language processing model using deep learning",
+            "What is the role of AI in text analysis?",
+            "How to use AI for text classification",
+            "What are the challenges of AI in text summarization?",
+            "How to use AI for text generation",
+            "What are the benefits of using AI in chatbots?",
+            "How to build a conversational AI model using deep learning",
+            "What is the difference between AI and dialogue systems?",
+            "How to use AI for dialogue management",
+            "What are the challenges of AI in voice assistants?",
+            "How to use AI for speech recognition",
+            "What are the benefits of using AI in natural language generation?",
+            "How to build a language model using deep learning",
+            "What is the role of AI in sentiment analysis?",
+            "How to use AI for sentiment classification",
+            "What are the challenges of AI in aspect-based sentiment analysis?",
+            "How to use AI for opinion mining",
+            "What are the benefits of using AI in topic modeling?",
+            "How to build a topic model using machine learning",
+            "What is the difference between AI and machine learning?",
+            "How to use AI for clustering analysis",
+            "What are the challenges of AI in dimensionality reduction?",
+            "How to use AI for feature selection",
+            "What are the benefits of using AI in model selection?",
+            "How to build a model selection framework using machine learning"
+        ]
+
+        function getRandomSearchQuery() {
+            const randomIndex = Math.floor(Math.random() * searchQueries.length);
+            return searchQueries[randomIndex];
+        }
+
+        // Function to simulate deleting and typing new text
+        function simulateTyping(query) {
+            let currentText = searchInput.placeholder;
+            let i = 0;
+            let j = 0;
+
+            // Delete existing placeholder text
+            function deleteText() {
+                if (i < currentText.length + 1) {
+                    setTimeout(deleteText, 0);
+                    searchInput.placeholder = currentText.slice(0, -i);
+                    i++;
+                } else {
+                    typeText();
+                }
+            }
+
+            // Type out new query letter by letter
+            function typeText() {
+                if (j < query.length) {
+                    setTimeout(typeText, 0);
+                    searchInput.placeholder += query[j];
+                    j++;
+                }
+            }
+
+            deleteText();
+        }
+
+        // Call the function every 15 seconds to update the search placeholder
+        setInterval(() => {
+            const randomQuery = getRandomSearchQuery();
+            simulateTyping(randomQuery);
+        }, 15000)
+
+        // Random Fact Generator
+        const facts = [
+            "The shortest war in history lasted 38 minutes.",
+            "A group of flamingos is called a 'flamboyance'.",
+            "The world's oldest known living tree is over 5,000 years old.",
+            "Honeybees can recognize human faces.",
+            "The longest English word without a vowel is 'rhythms'.",
+            "A day on Venus is longer than its year.",
+            "The Great Wall of China is not visible from space with the naked eye.",
+            "A blue whale's heart is the size of a small car.",
+            "Bananas are berries, but strawberries aren't.",
+            "The Eiffel Tower can grow up to 6 inches taller in summer.",
+            "Giraffes have the highest blood pressure of any animal.",
+            "Butterflies taste with their feet.",
+            "Cats have three eyelids: an upper lid, a lower lid, and a third lid called the nictitating membrane or 'haw'.",
+            "Human nose can detect over 1 trillion different scents.",
+            "A new species of animal is discovered every three to four days.",
+            "Butterflies are unable to fly if their body temperature is too low.",
+            "A snail has up to 25,000 teeth.",
+            "A octopus has three hearts.",
+            "A group of owls is called a 'parliament'.",
+            "An ostrich can run up to 45 mph.",
+            "The human eye can distinguish between over 10 million different colors.",
+            "Cheetahs are the fastest land animal, but they are also very poor swimmers.",
+            "A group of geese is called a 'gaggle'.",
+            "Chameleons can move their eyes in two different directions.",
+            "Clownfish are born male and can change sex to female.",
+            "Dolphins have unique signature whistles that serve as identifiers, similar to human names.",
+            "Seahorses are the only animals in which males become pregnant and give birth to live young.",
+            "A group of kangaroos is called a 'mob'.",
+            "A platypus is one of the few venomous mammals.",
+            "Elephants have the longest gestation period of any mammal, almost two years.",
+            "Tigers have unique stripes, like fingerprints.",
+            "Honeybees communicate through dancing.",
+            "A goldfish can remember things for three months.",
+            "Giraffes have the highest number of bones in their neck, seven.",
+            "Cheetahs can accelerate faster than most cars.",
+            "An ant can lift 20 times its own weight.",
+            "The human tongue is covered with small bumps called papillae.",
+            "A tortoise can live up to 150 years.",
+            "A hummingbird's wings beat 80 times per second.",
+            "A bat can eat up to 1,000 mosquitoes per hour.",
+            "A butterfly tastes with its feet.",
+            "A whale's tongue can weigh as much as an elephant.",
+            "A great white shark can swim up to 35 mph.",
+            "A group of rhinos is called a 'crash'.",
+            "The slowest-moving animal is the sloth, which can only move 0.15 mph.",
+            "A flying fish can glide up to 450 feet above the water.",
+            "A sea cucumber can expel its internal organs as a defense mechanism and then regrow them.",
+            "A scorpion's venom is powerful enough to kill a human.",
+            "A lion's roar can be heard from five miles away.",
+            "An alligator's jaws can exert a force of up to 2,125 pounds per square inch.",
+            "A lemur has a highly developed sense of smell.",
+            "A cow's stomach has four chambers.",
+            "A fox can jump up to 20 times its own body length.",
+            "A mouse can squeeze through a hole as small as 1 cm in diameter.",
+            "A dolphin's brain is larger than a human brain.",
+            "A python can go without eating for up to a year.",
+            "A penguin can drink saltwater because it has special glands that filter out the salt.",
+            "A vulture can fly for hours without flapping its wings.",
+            "A crocodile's jaw can exert a force of up to 5,000 pounds per square inch.",
+            "A falcon can fly at speeds of up to 242 mph.",
+            "A bear can run up to 30 mph.",
+            "A wolf can eat up to 20 pounds of meat in one sitting.",
+            "A stork can fly for over 30 hours non-stop.",
+            "A seagull can drink saltwater.",
+            "A firefly can produce its own light.",
+            "A starfish can regrow its arms if they are injured or cut off.",
+            "A toad's skin can absorb oxygen and moisture from the air.",
+            "A marten can jump up to 8 times its own body length.",
+            "A ferret can squeeze through a hole as small as 3 inches in diameter.",
+            "A sperm whale can dive as deep as 3,000 meters.",
+            "A jellyfish is immortal, in the sense that it can transform its body into a younger state.",
+            "A chameleon's tongue can be as long as its body.",
+            "A weasel can eat up to 10 mice per day.",
+            "A mule can live up to 50 years.",
+            "A goat can climb a tree.",
+            "A sheep can remember things for up to 8 months.",
+            "A crocodile can live up to 70 years.",
+            "A chicken can run up to 15 mph.",
+            "A snail can sleep for up to 3 years.",
+            "A sloth can sleep for up to 18 hours per day.",
+            "A bear can hibernate for up to 5 months.",
+            "A marmot can jump up to 20 times its own body length.",
+            "A cat can right itself in mid-air.",
+            "A dog can hear sounds that are too high for humans to hear.",
+            "A rabbit can see almost 360 degrees around its body.",
+            "A snake can live up to 30 years.",
+            "A rattlesnake can vibrate its tail up to 60 times per second.",
+            "A spider can produce up to 7 different types of silk.",
+            "A skunk can spray its odor up to 10 feet.",
+            "A woodpecker can peck its head against a tree up to 20 times per second.",
+            "A penguin can live up to 20 years.",
+            "A fish can live up to 50 years.",
+            "A parrot can live up to 100 years.",
+            "A turkey can live up to 10 years.",
+            "A hawk can fly up to 150 mph.",
+            "A falcon can dive up to 200 mph.",
+            "A rabbit can hop up to 25 mph.",
+            "A deer can run up to 30 mph.",
+            "A fox can jump up to 20 times its own body length.",
+            "A squirrel can jump up to 20 feet in a single bound.",
+            "A hummingbird can beat its wings up to 80 times per second.",
+            "A butterfly can taste with its feet.",
+            "A bee can fly up to 15 mph.",
+            "A wasp can sting repeatedly.",
+            "A hornet can sting repeatedly.",
+            "A grasshopper can jump up to 20 times its own body length.",
+            "A cricket can jump up to 6 times its own body length.",
+            "A cockroach can run up to 3 miles per hour.",
+            "A moth can fly up to 50 miles per hour.",
+            "A mosquito can fly up to 1.5 miles per hour.",
+            "A gnat can fly up to 3 miles per hour.",
+            "A midge can fly up to 1 mile per hour.",
+            "A spider can spin up to 7 different types of silk.",
+            "A spider can live up to 25 years.",
+            "A scorpion can live up to 10 years.",
+            "A centipede can live up to 10 years.",
+            "A flea can jump up to 150 times its own body length.",
+            "A tick can live up to 3 years.",
+            "A mite can live up to 5 years.",
+            "A louse can live up to 3 months.",
+            "A bed bug can live up to 1 year.",
+            "A leech can live up to 10 years.",
+            "A flea can live up to 1 year.",
+            "A moth can live up to 1 year.",
+            "A gnat can live up to 1 month.",
+            "A fruit fly can live up to 1 month.",
+            "A bird can live up to 100 years.",
+            "A turtle can live up to 100 years.",
+            "A tortoise can live up to 150 years.",
+            "A frog can live up to 15 years.",
+            "A toad can live up to 20 years.",
+            "A salamander can live up to 10 years.",
+            "A newt can live up to 10 years.",
+            "A lizard can live up to 20 years.",
+            "A snake can live up to 30 years.",
+            "A crocodile can live up to 70 years.",
+            "An alligator can live up to 50 years.",
+            "A fish can live up to 50 years.",
+            "A shark can live up to 50 years.",
+            "A whale can live up to 80 years.",
+            "A dolphin can live up to 50 years.",
+            "A porpoise can live up to 30 years.",
+            "A seal can live up to 30 years.",
+            "A walrus can live up to 40 years.",
+            "A manatee can live up to 50 years.",
+            "A dugong can live up to 70 years.",
+            "A whale can grow up to 50 feet long.",
+            "A shark can grow up to 40 feet long.",
+            "A goldfish can grow up to 10 inches long.",
+            "A guppy can grow up to 2 inches long.",
+            "A catfish can grow up to 10 feet long.",
+            "A sturgeon can grow up to 10 feet long.",
+            "A turtle can grow up to 8 feet long.",
+            "A frog can grow up to 12 inches long.",
+            "A toad can grow up to 10 inches long.",
+            "A salamander can grow up to 18 inches long.",
+            "A newt can grow up to 10 inches long.",
+            "A lizard can grow up to 3 feet long.",
+            "A snake can grow up to 30 feet long.",
+            "A crocodile can grow up to 23 feet long.",
+            "An alligator can grow up to 19 feet long.",
+            "A fish can grow up to 20 feet long.",
+            "A shark can grow up to 40 feet long.",
+            "A mackerel can grow up to 3 feet long.",
+            "A tuna can grow up to 10 feet long.",
+            "A swordfish can grow up to 14 feet long.",
+            "A marlin can grow up to 14 feet long.",
+            "A sailfish can grow up to 14 feet long.",
+            "A dolphin can grow up to 12 feet long.",
+            "A whale can grow up to 50 feet long.",
+            "A porpoise can grow up to 8 feet long.",
+            "A seal can grow up to 7 feet long.",
+            "A walrus can grow up to 12 feet long.",
+            "A manatee can grow up to 13 feet long.",
+            "A dugong can grow up to 10 feet long.",
+            // List truncated due to exceeding 150 additional items, review remainder.
+        ];
+
+        function getRandomFact() {
+            const randomIndex = Math.floor(Math.random() * facts.length);
+            return facts[randomIndex];
+        }
+
+        factText.textContent = getRandomFact();
+
+        setInterval(() => {
+            factText.style.opacity = 0;
+            setTimeout(() => {
+                factText.textContent = getRandomFact();
+                factText.style.opacity = 1;
+            }, 0);
+        }, 7500);
+
+        // Matrix background
+        const matrixCanvas = document.getElementById('matrix-background');
+        const ctx = matrixCanvas.getContext('2d');
+        matrixCanvas.width = window.innerWidth;
+        matrixCanvas.height = window.innerHeight;
+
+        const matrixChars = "{[]}";
+        const fontSize = 25;
+        const columns = matrixCanvas.width / fontSize;
+        const drops = Array(Math.floor(columns)).fill(1);
+
+        function drawMatrix() {
+            ctx.fillStyle = "rgba(0, 0, 0, 0.05)";
+            ctx.fillRect(0, 0, matrixCanvas.width, matrixCanvas.height);
+            ctx.fillStyle = "white";
+            ctx.font = `${fontSize}px bold`;
+
+            for (let i = 0; i < drops.length; i++) {
+                const text = matrixChars[Math.floor(Math.random() * matrixChars.length)];
+                const x = i * fontSize;
+                const y = drops[i] * fontSize;
+
+                ctx.fillText(text, x, y);
+
+                if (y > matrixCanvas.height && Math.random() > 0.975) {
+                    drops[i] = 0;
+                }
+
+                drops[i]++;
+            }
+        }
+
+        setInterval(drawMatrix, 0);
+    </script>
+</body>
+</html>
