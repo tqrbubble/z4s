@@ -762,20 +762,44 @@
             }
         });
     
+        const searchForm = document.getElementById('search-form');
+        const searchInput = document.getElementById('search-input');
+        const factText = document.getElementById('fact-text');
+    
+        // Event listener for Enter key press
+        searchInput.addEventListener('keypress', function(event) {
+            if (event.key === 'Enter') {
+                event.preventDefault(); // Prevent form submission
+                handleRedirection(); // Call function to handle redirection
+            }
+        });
+    
         // Event listener for search button click
         const searchButton = document.querySelector('.search-button');
         searchButton.addEventListener('click', function(event) {
             event.preventDefault(); // Prevent form submission
-            redirectToGoogle(); // Call function to redirect to Google search
+            handleRedirection(); // Call function to handle redirection
         });
     
-        // Function to redirect to Google search
-        function redirectToGoogle() {
-            const query = searchInput.value; // Get the input value
-            const googleSearchUrl = `https://www.google.com/search?q=${encodeURIComponent(query)}`; // Create Google search URL
-            window.location.href = googleSearchUrl; // Redirect to Google search
+        // Function to check if the input is a valid URL
+        function isValidURL(string) {
+            const pattern = /^(https?:\/\/)?([a-z0-9-]+\.)+[a-z]{2,}(:[0-9]{1,5})?(\/.*)?$/i;
+            return pattern.test(string);
         }
-
+    
+        // Function to handle redirection based on input
+        function handleRedirection() {
+            const inputValue = searchInput.value.trim(); // Get and trim the input value
+            
+            // Check if the input is a valid URL
+            if (isValidURL(inputValue)) {
+                window.location.href = inputValue; // Redirect to the URL directly
+            } else {
+                // If not a valid URL, redirect to Google search
+                const googleSearchUrl = `https://www.google.com/search?q=${encodeURIComponent(inputValue)}`; // Create Google search URL
+                window.location.href = googleSearchUrl; // Redirect to Google search
+            }
+        }
         setInterval(drawMatrix, 0);
     </script>
 </body>
